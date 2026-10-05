@@ -36,7 +36,7 @@ docs/                          earlier development logs (superseded by REPORT.md
   ```
   The frozen 184-prompt subset used for all evaluations is in `data/`.
 * **Base model.** `stabilityai/stable-diffusion-3-medium-diffusers` (gated on Hugging Face).
-* **Unlearned model.** DUO (https://github.com/naver-ai/DUO), rank-32 LoRA, 1000 steps; training commands and the two small patches to the DUO scripts are documented in `docs/` and the notebook. The LoRA weights are in `checkpoints/`. The fused full checkpoint (`sd3-nudity-unlearned-fixed`, several GB) is **not** in git: `<<https://drive.google.com/drive/folders/1r-ciBHpkjsbXtC-zjpppKGhZH4oYXEvT?usp=drive_link>>`.
+* **Unlearned model.** DUO (https://github.com/naver-ai/DUO), rank-32 LoRA, 1000 steps; training commands and the two small patches to the DUO scripts are documented in `docs/` and the notebook. The LoRA weights are in `checkpoints/`. The fused full checkpoint (`sd3-nudity-unlearned-fixed`, several GB) is **not** in git: `<< https://drive.google.com/drive/folders/1r-ciBHpkjsbXtC-zjpppKGhZH4oYXEvT?usp=drive_link >>`.
 * **No images are stored.** Generated images and the DUO training images (which contain nudity) are deliberately excluded; results are per-prompt NudeNet scores, CLIP scores and CLIP image embeddings.
 
 ## Reproducing the experiments (Google Colab, A100)
