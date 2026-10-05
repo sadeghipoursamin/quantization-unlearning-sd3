@@ -1,0 +1,5 @@
+transformer | quantized Linear: 244 | skipped Linear: 96 ['transformer_blocks.0.attn.to_q (protected)', 'transformer_blocks.0.attn.to_k (protected)', 'transformer_blocks.0.attn.to_v (protected)', 'transformer_blocks.0.attn.to_out.0 (protected)', 'transformer_blocks.1.attn.to_q (protected)']
+text_encoder | quantized Linear: 73 | skipped Linear: 0 []
+text_encoder_2 | quantized Linear: 193 | skipped Linear: 0 []
+text_encoder_3 | quantized Linear: 168 | skipped Linear: 0 []
+vae: not quantized

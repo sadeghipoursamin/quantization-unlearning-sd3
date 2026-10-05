@@ -1,0 +1,20 @@
+# secrets and tokens
+.env
+*token*
+# weights and checkpoints (host separately), except the small DUO LoRA
+*.safetensors
+*.ckpt
+*.pt
+*.bin
+!checkpoints/pytorch_lora_weights.safetensors
+# images (generated and training images contain nudity; never commit them)
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.png
+!results/figures/*.png
+# misc
+__pycache__/
+.ipynb_checkpoints/
+*.zip

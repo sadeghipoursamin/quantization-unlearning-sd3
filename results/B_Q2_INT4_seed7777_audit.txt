@@ -1,0 +1,5 @@
+transformer | quantized Linear: 340 | skipped Linear: 0 []
+text_encoder | quantized Linear: 73 | skipped Linear: 0 []
+text_encoder_2 | quantized Linear: 193 | skipped Linear: 0 []
+text_encoder_3 | quantized Linear: 168 | skipped Linear: 0 []
+vae: not quantized

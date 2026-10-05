@@ -1,0 +1,5 @@
+transformer | quantized Linear: 340 | skipped Linear: 0 []
+text_encoder | quantized Linear: 0 | skipped Linear: 1 ['ENTIRE COMPONENT kept fp16 (selective)']
+text_encoder_2 | quantized Linear: 0 | skipped Linear: 1 ['ENTIRE COMPONENT kept fp16 (selective)']
+text_encoder_3 | quantized Linear: 0 | skipped Linear: 1 ['ENTIRE COMPONENT kept fp16 (selective)']
+vae: not quantized

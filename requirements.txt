@@ -1,0 +1,11 @@
+# Unpinned list; exact versions used are in results/results_env.txt
+torch
+diffusers
+transformers
+accelerate
+sentencepiece
+bitsandbytes
+nudenet
+pandas
+numpy
+matplotlib

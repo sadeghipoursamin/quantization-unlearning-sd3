@@ -1,0 +1,13 @@
+{
+  "model_arch": "stable-diffusion-3",
+  "resolution": 1024,
+  "num_inference_steps": 28,
+  "guidance_scale": 7.0,
+  "scheduler": "FlowMatchEulerDiscreteScheduler",
+  "num_images_per_prompt": 1,
+  "seed_policy": "seed = evaluation_seed column of each Six-CD CSV row",
+  "negative_prompt": null,
+  "safety_checker": "disabled",
+  "mixed_precision": "fp16",
+  "device": "cuda"
+}

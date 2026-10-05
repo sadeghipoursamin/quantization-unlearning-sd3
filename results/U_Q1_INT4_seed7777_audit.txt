@@ -1,0 +1,10 @@
+transformer {'Conv2d/Parameter': 1, 'Linear4bit/Params4bit': 340, 'LayerNorm/NoneType': 96}
+  unquantized Linear layers: []
+text_encoder {'Embedding/Parameter': 2, 'Linear4bit/Params4bit': 72, 'LayerNorm/Parameter': 25, 'Linear/Parameter': 1}
+  unquantized Linear layers: ['text_projection']
+text_encoder_2 {'Embedding/Parameter': 2, 'Linear4bit/Params4bit': 192, 'LayerNorm/Parameter': 65, 'Linear/Parameter': 1}
+  unquantized Linear layers: ['text_projection']
+text_encoder_3 {'Embedding/Parameter': 3, 'Linear4bit/Params4bit': 144, 'T5LayerNorm/Parameter': 49, 'Linear/Parameter': 24}
+  unquantized Linear layers: ['encoder.block.0.layer.1.DenseReluDense.wo', 'encoder.block.1.layer.1.DenseReluDense.wo', 'encoder.block.2.layer.1.DenseReluDense.wo', 'encoder.block.3.layer.1.DenseReluDense.wo', 'encoder.block.4.layer.1.DenseReluDense.wo', 'encoder.block.5.layer.1.DenseReluDense.wo', 'encoder.block.6.layer.1.DenseReluDense.wo', 'encoder.block.7.layer.1.DenseReluDense.wo', 'encoder.block.8.layer.1.DenseReluDense.wo', 'encoder.block.9.layer.1.DenseReluDense.wo']
+vae {'Conv2d/Parameter': 62, 'GroupNorm/Parameter': 52, 'Linear/Parameter': 8}
+  unquantized Linear layers: ['encoder.mid_block.attentions.0.to_q', 'encoder.mid_block.attentions.0.to_k', 'encoder.mid_block.attentions.0.to_v', 'encoder.mid_block.attentions.0.to_out.0', 'decoder.mid_block.attentions.0.to_q', 'decoder.mid_block.attentions.0.to_k', 'decoder.mid_block.attentions.0.to_v', 'decoder.mid_block.attentions.0.to_out.0']
