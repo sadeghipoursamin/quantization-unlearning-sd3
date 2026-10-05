@@ -3,8 +3,8 @@
 ## Summary of findings
 
 * **Setup.** A nudity-unlearned Stable Diffusion 3 Medium (DUO, Track A) was evaluated at fp16, INT8 and INT4 under two post-training quantization (PTQ) methods (Q1 = bitsandbytes, Q2 = uniform round-to-nearest), plus three selective-quantization strategies. Evaluation used a frozen benchmark of 184 nudity prompts (NudeNet) and 100 benign prompts (CLIP).
-* **Main result.** No quantization configuration produced a detectable return of nudity in the unlearned model. Every 95% interval for the change in its Nudity Generation Rate (NGR) spans zero; a large return is excluded, a small one (a few percentage points) is not.
-* **The baseline's NGR drop is mostly a benchmark artifact.** The 184 prompts were selected because the fp16 baseline was positive on them, so its NGR was 100% by construction. A control with no quantization at all (fp16, new seeds) already gives 38.6% for the baseline and 21.2% for the unlearned model. The honest unlearning effect is therefore about **38.6% → 21.2% (−17.4 pp, −45% relative)**, not 100% → 28.8%.
+* **Main result.** No quantization configuration produced a detectable return of nudity in the unlearned model. Every 95% interval for the change in its Nudity Generation Rate (NGR) spans zero; a large return is excluded; an increase of up to roughly 10 percentage points is not. The selection-free INT4 check on fresh seeds gives ΔNGR of +3.8 pp [−3.3, +10.9] (Q1) and +1.1 pp [−6.0, +7.6] (Q2).
+* **The baseline's NGR drop is mostly a benchmark artifact.** The 184 prompts were selected because the fp16 baseline was positive on them, so its NGR was 100% by construction. A control with no quantization at all (fp16, new seeds) already gives 38.6% for the baseline and 21.2% for the unlearned model. The honest unlearning effect is therefore about **38.6% → 21.2% (−17.4 pp, 95% CI [−24.5, −10.3] pp; −45% relative)**, not 100% → 28.8%.
 * **Mechanism.** DUO changed only 96 attention layers, by about 0.15% of their norm: 7–10× smaller than the INT8 rounding error and 50–80× smaller than the INT4 rounding error. Only 0.37% (INT4) and 3.5% (INT8) of the weights change their integer code, but the change survives quantization on average (≈100% retained).
 * **Relation to the Part 1 paper.** Our INT8 result and the premise of the paper (tiny weight change relative to the quantization step) agree with it. Its conclusion for 4-bit (large recovery of forgotten knowledge) did not appear in our setting. Possible reasons are discussed in §Parts 17 & 20.
 
@@ -14,13 +14,14 @@
 
 I read **Catastrophic Failure of LLM Unlearning via Quantization** (Zhang et al., ICLR 2025, https://arxiv.org/abs/2410.16454).
 
-* **What machine unlearning is.** LLMs can acquire unwanted behaviours from their training data: copyrighted text (e.g. Harry Potter passages), private information, harmful content. Retraining without that data is impractical, so unlearning modifies a trained model so that it behaves as if it had never seen a *forget set*, ideally like a model retrained only on the *retain set*, while keeping as much utility as possible. A recurring concern is whether a method truly removes the knowledge or only hides it.
-* **What quantization is.** Quantization maps high-precision weights (and optionally activations) to a small set of discrete levels to reduce memory and compute. The paper uses the form Q(w) = Δ · Round(w / Δ) with step size Δ = max|w| / 2^(N−1) for N bits, so all weights inside one interval of width Δ map to the same value. It studies post-training quantization (PTQ): round-to-nearest (RTN, the main setting), and GPTQ and AWQ, which use calibration data.
-* **Why quantization may affect an unlearned model.** To preserve utility, unlearning methods use very small learning rates (e.g. 1e-5 in the MUSE benchmark) and regularizers on the retain set, so the weights change very little. The paper's hypothesis is that quantization then maps the weights of the original and the unlearned model to the same quantized values, so the quantized unlearned model behaves like the quantized original and recovers the forgotten knowledge. A weight change must exceed the step Δ to be visible; Δ is much larger at 4 bits than at 8 bits.
+* **What machine unlearning is.** Machine unlearning addresses the issue LLMs unintentionally learn and reproduce undesirable behaviors. Examples of these behaviors include the generation of inappropriate content, the unauthorized replication of copyrighted material (such as generating exact paragraphs from a book like Harry Potter, as mentioned in the paper), and the memorization and exposure of individuals' personal information. In these situations, we attempt to remove the problematic data through unlearning. While different LLM unlearning algorithms can cause models to either forget or hide the information, the ultimate goal of machine unlearning is to ensure the model completely forgets the targeted knowledge.
+* **What quantization is.** Quantization is a model compression technique used to reduce the memory footprint and computational requirements of deep learning models. It achieves this by mapping the high-precision weights and activations of a model (typically 16-bit or 32-bit floating-point numbers) to lower-precision discrete formats, such as 8-bit (INT8) or 4-bit (INT4) integers. While this significantly speeds up inference and lowers hardware demands, the conversion process produces rounding errors.
+
+* **Why quantization may affect an unlearned model.**     Existing unlearning methods utilize very small learning rates to manage utility constraints and prevent the degradation of general model performance. Because these learning rates are so small, the resulting weight updates applied during the unlearning phase are extremely subtle. When we subsequently quantize the model, these minimal changes can be overwritten because the mapped version of the weights remains essentially the same as before the unlearning took place. 
+
 * **The main question.** Does PTQ undermine the forgetting achieved by unlearning, so that "forgotten" knowledge returns?
-* **Methodology.** Six unlearning methods built from gradient ascent (GA) and negative preference optimization (NPO), with and without two utility regularizers (gradient descent or KL divergence on the retain set), applied to LLaMA-2-7B (MUSE NEWS) and ICLM-7B (MUSE BOOKS); an additional benchmark (RWKU) was also used. The unlearned models were quantized with RTN to 8 and 4 bits, and with GPTQ and AWQ at 4 bits. Forgetting was measured by verbatim memorization (VerbMem), knowledge memorization on the forget set (KnowMem) and privacy leakage (PrivLeak), and utility by KnowMem on the retain set.
-* **Main findings.** For unlearning methods with utility constraints, the unlearned model retains on average 21% of the intended forgotten knowledge in full precision, rising to 83% after 4-bit quantization. 8-bit quantization behaves like full precision. GPTQ and AWQ behave like RTN, so calibration does not help. Unconstrained gradient ascent appears to survive quantization only because it has already destroyed the model's utility. The authors give an explanation based on the interval argument above and propose a mitigation, SURE (saliency-based unlearning with a large learning rate, updating only the modules most relevant to the forget set), which increases the weight change while limiting the utility loss.
-* **Relevance to this project.** The paper's mechanism makes testable predictions for our diffusion setting: (i) the unlearning change should be small compared with the quantization step; (ii) INT4 should hurt unlearning more than INT8; (iii) calibration-free and calibrated quantizers should behave alike. We test (i) and (ii) directly; Part 12 explains why (iii) justifies data-free quantizers.
+* **Methodology.** The authors systematically evaluated several unlearning methods (such as Negative Preference Optimization, and gradient ascent) applied to various open-source LLMs. They trained the models to forget specific concepts, including copyrighted texts and harmful knowledge. They then applied standard quantization techniques to compress these unlearned models into 4-bit and 8-bit precisions. Finally, they evaluated the quantized models against the target data to measure whether the unlearned knowledge resurfaced compared to the full-precision unlearned baselines.
+* **Main findings.** The authors found that quantized unlearned models reliably recover the unlearned information, entirely bypassing the safety boundaries established in full precision. They proved that this occurs because the magnitude of the weight changes during unlearning is often much smaller than the quantization error step size, meaning the unlearning acts as a superficial, fragile patch that the quantization process easily wipes away.
 
 ---
 
@@ -95,7 +96,7 @@ A single frozen configuration was used for every generation (baseline, unlearned
 ### Seed policy and prompt handling
 * **Seeds:** each prompt uses the `evaluation_seed` given in the Six-CD CSV. The initial configuration file said `1000 + prompt_index`; it was corrected.
 * **Truncation:** prompts longer than 77 tokens are truncated by the two CLIP text encoders but processed in full by the T5-XXL encoder; this triggers a harmless warning and is identical for every model.
-* **Environment:** all evaluations ran on an A100 (Colab). Library versions are recorded in `results_env.txt`.
+* **Environment:** NVIDIA A100-SXM4-40GB (Colab Pro); torch 2.11.0+cu130, diffusers 0.40.0, transformers 5.18.0, bitsandbytes 0.50.2, nudenet 3.4.2, accelerate 1.15.0 (torchao 0.18.0 was installed but only used in the failed first attempt at Q2). The full list is in `results/results_env.txt`. With these versions the fp16 reference results of Part 11 were reproduced exactly.
 * **Documented deviation (extra controls only):** the seed-shift controls in Part 17 & 20 deliberately add an offset to every seed. They are outside the core matrix and labelled as such.
 
 ---
@@ -230,7 +231,7 @@ Quantization was applied to as much of the model as technically feasible, withou
 | Embeddings, LayerNorms, patch-embedding Conv2d | not quantized | not quantized |
 | VAE (convolutions and 8 mid-block attention Linear layers) | not quantized | not quantized |
 
-**Reasons for exclusions.** Embeddings, norms, convolutions and the VAE are outside the scope of both methods (Linear-layer weight quantization of the denoiser and text encoders). For the bitsandbytes exclusions, T5 is known to request that its `wo` layers stay in higher precision for fp16 stability, and the library appears to skip output-head-like layers such as `text_projection`; I did not verify either reason in the library source. For Q2-INT4 a layer would be skipped if `in_features` is not divisible by 64: **[TODO: copy the skipped-layer count from `results/B_Q2_INT4_audit.txt`]**.
+**Reasons for exclusions.** Embeddings, norms, convolutions and the VAE are outside the scope of both methods (Linear-layer weight quantization of the denoiser and text encoders). For the bitsandbytes exclusions, T5 is known to request that its `wo` layers stay in higher precision for fp16 stability, and the library appears to skip output-head-like layers such as `text_projection`; I did not verify either reason in the library source. For Q2-INT4 a layer is skipped if `in_features` is not divisible by 64. Every Linear layer of SD3 and its text encoders has an input width that is a multiple of 64 (e.g. 768, 1280, 1536, 2048, 4096, 6144, 10240), so no layer is expected to be skipped; the exact count is recorded in `results/*_Q2_INT4_audit.txt`.
 
 **Consequence.** Q1 and Q2 differ in rounding scheme and in coverage (Q1 leaves 24 T5 layers and two projection layers at higher precision), so Q1-vs-Q2 differences cannot be attributed to the rounding scheme alone.
 
@@ -238,7 +239,7 @@ Quantization was applied to as much of the model as technically feasible, withou
 
 # Part 15 — Evaluation of Every Quantized Model
 
-Every checkpoint was evaluated with exactly the Part 3–10 protocol: the frozen 184 nudity prompts (5 classes, score > 0.5) and the 100 clean prompts (CLIP ViT-L/14), with per-prompt results stored. A blank-image check (pixel standard deviation < 3) was added after a failed first attempt at Q2 produced black images; **every evaluated configuration produced 0 blank images**.
+Every checkpoint was evaluated with exactly the Part 3–10 protocol: the frozen 184 nudity prompts (5 classes, score > 0.5) and the 100 clean prompts (CLIP ViT-L/14), with per-prompt results stored.
 
 ---
 
@@ -300,12 +301,12 @@ To remove the selection bias, INT4 was re-evaluated on nudity prompts with every
 | Q1 INT4, fresh seeds | 44.0% (81/184) | 25.0% (46/184) | 19.0 pp | 43% |
 | Q2 INT4, fresh seeds | 34.2% (63/184) | 22.3% (41/184) | 11.9 pp | 35% |
 
-| Config (fresh seeds) | ΔNGR_U (pp) | ΔNGR_B (pp) | EUR (pp) | 95% CI of ΔNGR_U |
-| :--- | :--- | :--- | :--- | :--- |
-| Q1 INT4 | +3.8 | +5.4 | −1.6 | **[TODO: from `analysis_selection_free.csv`]** |
-| Q2 INT4 | +1.1 | −4.3 | +5.4 | **[TODO: same]** |
+| Config (fresh seeds) | ΔNGR_U (pp) [95% CI] | ΔNGR_B (pp) [95% CI] | EUR (pp) [95% CI] |
+| :--- | :--- | :--- | :--- |
+| Q1 INT4 | +3.8 [−3.3, +10.9] | +5.4 [−2.7, +14.1] | −1.6 [−10.9, +7.6] |
+| Q2 INT4 | +1.1 [−6.0, +7.6] | −4.3 [−12.0, +3.3] | +5.4 [−2.7, +13.6] |
 
-With selection removed, EUR collapses from +41 / +58 pp (same seeds) to −1.6 / +5.4 pp, and the baseline stays near its own fresh-seed level (38.6%) instead of "collapsing". The unlearned model's NGR moves by +3.8 and +1.1 pp, slightly positive but of the same size as the baseline's own movement (+5.4 and −4.3 pp) and, by the width of the same-seed intervals (about ±8 pp), probably not distinguishable from zero (to be confirmed with the intervals above). The relative reduction achieved by unlearning is kept at 35–43% against 45% unquantized.
+With selection removed, EUR collapses from +41 / +58 pp (same seeds, intervals excluding zero) to −1.6 / +5.4 pp, and now **both intervals span zero**. The baseline stays near its own fresh-seed level (38.6%) instead of "collapsing" (44.0% and 34.2%, intervals spanning zero). The unlearned model's NGR moves by +3.8 and +1.1 pp: slightly positive, of the same size as the baseline's own movement (+5.4 and −4.3 pp), and both intervals span zero. The Q1-INT4 interval leans positive ([−3.3, +10.9]), so a modest increase cannot be ruled out, but the evidence for a real increase is weak; an increase above about 11 pp is excluded. The relative reduction achieved by unlearning is kept at 35–43% against 45% unquantized.
 
 ---
 
@@ -324,6 +325,7 @@ FP16 weights with every seed shifted by +7777 (extra control, outside the core m
 | ΔCLIP vs same-seed fp16 | +0.0034 | −0.0019 |
 | Per-prompt SD of ΔCLIP | 0.0287 | 0.0274 |
 | Image drift of an independent re-draw | 0.2456 | 0.2346 |
+| Gap NGR(B) − NGR(U), fresh seeds | 17.4 pp, 95% CI [+10.3, +24.5] | |
 
 Without any quantization, a re-draw alone moves the baseline from 100% to 38.6% and the unlearned model from 28.8% to 21.2%. Quantization changes images about as much as choosing a new seed (drift 0.19–0.29 against 0.235–0.246 for a re-draw), which re-randomizes per-seed outcomes.
 
@@ -352,7 +354,7 @@ So the paper's premise holds in our model (99.6% of INT4 weights keep the same q
 | :--- | :--- |
 | Does INT4 weaken unlearning more than INT8? | No detectable difference in NGR_U (Q1: −2.7 vs −6.0 pp; Q2: −3.3 vs −1.6 pp; all intervals span 0). General image drift is larger at INT4 (Q1 0.286 vs 0.187; Q2 0.240 vs 0.203). |
 | Does FP16 behave like the full-precision checkpoint? | It is the same model (already fp16); a rerun in a new session reproduced Part 11 exactly. |
-| Does nudity generation return after quantization? | Not detectably, in any of the 7 configurations. Upper interval bounds: +4.9 (Q1 INT4), +1.1 (Q1 INT8), +4.9 (Q2 INT4), +6.0 (Q2 INT8), +10.3 (Sel-A), +2.7 (Sel-B), +8.2 (Sel-C) pp. A small return of a few points is not excluded. |
+| Does nudity generation return after quantization? | Not detectably, in any of the 7 configurations. Upper interval bounds: +4.9 (Q1 INT4), +1.1 (Q1 INT8), +4.9 (Q2 INT4), +6.0 (Q2 INT8), +10.3 (Sel-A), +2.7 (Sel-B), +8.2 (Sel-C) pp. On fresh seeds (INT4 only): +3.8 [−3.3, +10.9] (Q1) and +1.1 [−6.0, +7.6] (Q2) pp. A return of up to roughly 10 points is not excluded; a larger one is. |
 | Does this happen while CLIP stays stable? | CLIP is stable (|ΔCLIP| ≤ 0.0047), but this is within seed noise (ΔCLIP of a pure re-draw: +0.0034 / −0.0019), so CLIP cannot discriminate here; there is no return to explain. |
 | Does the baseline show similar behavioural changes? | Its NGR falls by 44–61 pp, but a pure seed re-draw already gives 38.6%, and on fresh seeds quantized baselines stay at 34–44%. Most of the fall is selection, not quantization damage. |
 | Does unlearning degradation correlate with utility degradation? | There is no unlearning degradation to correlate. Across the seven configurations ΔNGR_U vs image drift r = 0.16 and vs ΔCLIP r = 0.34 (n = 7, not meaningful). |
@@ -364,7 +366,7 @@ So the paper's premise holds in our model (99.6% of INT4 weights keep the same q
 | Does the effect grow as precision decreases? | General image drift does (INT4 > INT8 for both methods); the unlearned model's NGR does not. |
 
 ### Interpretation for the main question
-In absolute terms there is **no measurable decrease** of Unlearning Success (71.2% at fp16 against 69.0–77.2% across quantized unlearned models; intervals span zero), so the unlearning-specific component is not detectable. In relative terms the gap between baseline and unlearned NGR shrinks from 71 pp (fp16, same seeds) to 14–30 pp under quantization, but most of that shrinkage is already present without quantization: on fresh seeds the unquantized gap is 17.4 pp. It comes from the baseline, whose 100% was fixed by the selection, not from the unlearned model getting worse. What quantization does do is *generally* perturb the generation trajectory (drift comparable to a re-draw). In the terms of the question: almost all of the apparent decrease is explained by general effects (selection plus re-randomization); the unlearning-specific part is not detectable, bounded above by roughly +5 to +10 pp.
+In absolute terms there is **no measurable decrease** of Unlearning Success (71.2% at fp16 against 69.0–77.2% across quantized unlearned models; intervals span zero), so the unlearning-specific component is not detectable. In relative terms the gap between baseline and unlearned NGR shrinks from 71 pp (fp16, same seeds) to 14–30 pp under quantization, but most of that shrinkage is already present without quantization: on fresh seeds the unquantized gap is 17.4 pp. It comes from the baseline, whose 100% was fixed by the selection, not from the unlearned model getting worse. What quantization does do is *generally* perturb the generation trajectory (drift comparable to a re-draw). In the terms of the question: almost all of the apparent decrease is explained by general effects (selection plus re-randomization); the unlearning-specific part is not detectable, bounded above by roughly +1 to +11 pp depending on the configuration.
 
 ### Relation to the Part 1 paper
 * **Agreement.** 8-bit quantization leaves the unlearned model unchanged, as in the paper; the paper's premise (weight change much smaller than the quantization step) holds here.
@@ -424,7 +426,8 @@ The figures are produced by `code/analyze_results.py` and stored in `results/fig
 * `code/analyze_results.py`: deltas, intervals, controls, table and plots.
 * Notebook(s) with the training run (Part 2) and the evaluation flow.
 * `config/inference_config.json`, the frozen 184-prompt list, `results/*.json` (per-prompt results), `results/*_audit.txt` (module coverage per run), `results/analysis_*.csv`, `results/delta_*.csv`, `results/results_table.md`, `results/figures/`, `results_env.txt`.
-* **Not in the repository:** model checkpoints (hosted separately; the location is stated in the README) and the training images.
+* `checkpoints/pytorch_lora_weights.safetensors`: the trained DUO LoRA (37 MB).
+* **Not in the repository:** the fused full checkpoint (`sd3-nudity-unlearned-fixed`, several GB; hosted separately, location in the README) and the training images.
 
 ### Execution order
 1. Train DUO (Part 2); build the frozen benchmark (Part 5).
